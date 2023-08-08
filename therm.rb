@@ -4,19 +4,17 @@ require 'mechanize'
 require 'json'
 
 class TempSensor
-  def initialize(user, pass, device_id)
+  def initialize(user, pass)
     @user = user
     @pass = pass
-    @device_id = device_id
-
-    @last_response = Time.now
+    @responses = {}
 
     @agent = Mechanize.new
     @agent.agent.http.verify_mode = OpenSSL::SSL::VERIFY_NONE
   end
 
-  def query
-    data = JSON.parse(response.body)
+  def query(device_id)
+    data = JSON.parse(response(device_id).body)
 
     retval = {}
     retval['success'] = data['success']
@@ -35,30 +33,37 @@ class TempSensor
 
   private
 
-  def setup
-    @agent.get('https://mytotalconnectcomfort.com/portal')
+    def setup
+      @agent.get('https://mytotalconnectcomfort.com/portal')
 
-    @agent.post('https://mytotalconnectcomfort.com/portal',
-              'timeOffset' => '240',
-              'UserName' => @user,
-              'Password' => @pass,
-              'RememberMe' => 'false')
-  end
+      @agent.post('https://mytotalconnectcomfort.com/portal',
+                'timeOffset' => '240',
+                'UserName' => @user,
+                'Password' => @pass,
+                'RememberMe' => 'false')
+    end
 
-  def response
-    return @val if @last_response > 5.minutes.ago && @val
+    def response(device_id)
 
-    puts 'Refreshing data'
+      if @responses[device_id] && @responses[device_id][:time] > 5.minutes.ago
+        puts "Returning cached value it has been less than 5 minutes for #{device_id}"
+        return @responses[device_id][:val]
+      end
 
-    @last_response = Time.now
+      puts 'Refreshing data for ' + device_id
 
-    setup
+      setup
 
-    @val = @agent.get(
-      "https://mytotalconnectcomfort.com/portal/Device/CheckDataSession/#{@device_id}?_=#{Time.now.to_i * 1000}",
-      [],
-      "https://mytotalconnectcomfort.com/portal/Device/Control/#{@device_id}",
-      'X-Requested-With' => 'XMLHttpRequest'
-    )
-  end
+      @responses[device_id] = {
+        time: Time.now,
+        val: @agent.get(
+          "https://mytotalconnectcomfort.com/portal/Device/CheckDataSession/#{device_id}?_=#{Time.now.to_i * 1000}",
+          [],
+          "https://mytotalconnectcomfort.com/portal/Device/Control/#{device_id}",
+          'X-Requested-With' => 'XMLHttpRequest'
+        )
+      }
+
+      return @responses[device_id][:val]
+    end
 end

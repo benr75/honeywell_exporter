@@ -14,11 +14,27 @@ class App < Sinatra::Base
     super
     @registry = Prometheus::Client.registry
 
+    env_file = File.join('config.yml')
+    
+    if File.exist?(env_file)
+      YAML.load(File.open(env_file)).each do |key, value|
+        ENV[key.to_s] = value
+        puts "setting #{key.to_s}"
+      end 
+    else
+      puts ""
+      puts "Create a config.yml with the following format: "
+      puts ""
+      puts 'user: "user"'
+      puts 'pass: "pass"'
+      puts ""
+      raise "Cannot Start without a config"
+    end
+
     @user = ENV['THERM_USER']
     @pass = ENV['THERM_PASSWORD']
-    @device_id = ENV['THERM_DEVICE_ID']
 
-    @sensor = TempSensor.new(@user, @pass, @device_id)
+    @sensor = TempSensor.new(@user, @pass) #, @device_id)
 
     @up = @registry.gauge(:therm_up, 'Is device responding')
     @device_live = @registry.gauge(:therm_deviceLive, 'Is device live')
@@ -35,11 +51,13 @@ class App < Sinatra::Base
   get '/' do
     content_type :json
 
-    @sensor.query.to_json
+    @sensor.query(params[:device_id]).to_json
   end
 
   get '/metrics' do
-    data = @sensor.query
+    @device_id = params[:device_id]
+    
+    data = @sensor.query(@device_id)
 
     @up.set({ device_id: @device_id }, data['success'] ? 1 : 0)
     @device_live.set({ device_id: @device_id }, data['device_live'] ? 1 : 0)
