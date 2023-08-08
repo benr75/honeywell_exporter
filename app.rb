@@ -1,4 +1,4 @@
-require './therm'
+require File.join(__dir__, 'therm')
 require 'sinatra/base'
 require 'prometheus/client'
 require 'prometheus/client/formats/text'
@@ -14,7 +14,7 @@ class App < Sinatra::Base
     super
     @registry = Prometheus::Client.registry
 
-    env_file = File.join('config.yml')
+    env_file = File.join(__dir__, 'config.yml')
     
     if File.exist?(env_file)
       YAML.load(File.open(env_file)).each do |key, value|
