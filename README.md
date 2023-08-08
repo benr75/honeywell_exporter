@@ -29,3 +29,22 @@ You can see metrics by providing your DEVICE_ID:
 curl localhost:9100/?device_id=DEVICE_ID # high level output
 curl localhost:9100/metrics?device_id=DEVICE_ID # In prometheus format
 ```
+
+Example job for Prometheus. Add a DEVICE_ID per thermostat. 
+
+```
+scrape_configs:
+  - job_name: 'honeywell'
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+        - DEVICE_ID
+        - DEVICE_ID
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_device_id
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 127.0.0.1:9100 # This exporter's real hostname:port
+```
