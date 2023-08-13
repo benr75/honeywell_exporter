@@ -46,6 +46,7 @@ class App < Sinatra::Base
     @heating = @registry.gauge(:heating, 'System heating')
     @cooling = @registry.gauge(:cooling, 'System cooling')
     @fan_status = @registry.gauge(:therm_fan_status, 'Current fan status')
+    @humidity = @registry.gauge(:therm_humidity, 'Current Humidity')
   end
 
   get '/' do
@@ -68,7 +69,7 @@ class App < Sinatra::Base
     @heating.set({ device_id: @device_id }, data['heating'])
     @cooling.set({ device_id: @device_id }, data['cooling'])
     @fan_status.set({ device_id: @device_id }, data['fan_status'] ? 1 : 0)
-
+    @humidity.set({ device_id: @device_id }, data['humidity'])
     Prometheus::Client::Formats::Text.marshal(@registry)
   end
 
